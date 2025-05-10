@@ -73,6 +73,11 @@ powerBox_Y = 831
 powerBox_Width = 65
 powerBox_Heigth = 22
 
+min_shards = 3
+min_shards_for_kor_chat = 3
+isServer = False
+serverString = '#1004'
+
 foundTrucks = []
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
@@ -135,7 +140,7 @@ def share_Truck(count,isServer):
             if j == 0 and i == 1:
                 clickShare(shareItem_X+shareOffset,shareItem_Y+shareOffset)
                 continue
-            if j == 0 and i == 2 and count > 3:
+            if j == 0 and i == 2 and count >= min_shards_for_kor_chat:
                 clickShare(shareItem_X+shareOffset,shareItem_Y+shareOffset)
                 continue
             continue                
@@ -264,9 +269,12 @@ def analyse_static_Truck(foundTrucks):
 
         print(count)
 
-        if count > 2:
+        if isServer:
+            isServer = serverString in truckstring
+
+        if count >= min_shards:
             #click(shareTruck_X,shareTruck_Y,True)
-            share_Truck(count,False)
+            share_Truck(count,isServer)
             time.sleep(0.5)
             keyboard.send('esc')
             time.sleep(1)
