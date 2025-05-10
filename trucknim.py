@@ -42,7 +42,8 @@ shareBoxItemHeight = 93
 shareBoxItemWidth = 510
 shareBoxItemGap = 14
 scrollGap = 44
-shareOffset= 10
+shareOffset= 40
+truckOffSet = 15
 
 truckScreen__min_X = 683
 truckScreen_max_X = 1200
@@ -61,6 +62,7 @@ urShard = cv2.imread(pictureFolder+'ur_shard.png', cv2.COLOR_RGB2BGR)
 urTruck1 = cv2.imread(pictureFolder+'urtruck1.png', cv2.COLOR_RGB2BGR)
 urTruck2 = cv2.imread(pictureFolder+'urtruck2.png', cv2.COLOR_RGB2BGR)
 srTruck1 = cv2.imread(pictureFolder+'srtruck1.png', cv2.COLOR_RGB2BGR)
+srTruck2 = cv2.imread(pictureFolder+'srtruck2.png', cv2.COLOR_RGB2BGR)
 
 nameBox_Y = 770
 nameBox_X = 796
@@ -102,7 +104,7 @@ def click(x,y,normal):
     time.sleep(mouse_timeout)
 
 def pointIsOutside(pt):
-    return pt[0] < truckScreen__min_X or pt[0] > truckScreen_max_X or pt[1] < truckScreen__min_X or pt[1] > truckScreen_max_Y
+    return pt[0] < truckScreen__min_X or pt[0] > truckScreen_max_X or pt[1] < truckScreen_min_Y or pt[1] > truckScreen_max_Y
 
 def pointInRange(pt, arr):
     for [x,y] in arr:
@@ -120,11 +122,11 @@ def share_Truck(count,isServer):
     shareShot = cv2.cvtColor(np.array(pyautogui.screenshot()),cv2.COLOR_RGB2BGR)
     # cv2.imshow('ShareShot',shareShot)
     # cv2.waitKey(0)
-    for j in (0,1):
-        for i in (0,4):
+    for j in range(0,1):
+        for i in range(0,4):
             shareItem_X = shareBox_X
             shareItem_Y = shareBox_Y + i*(shareBoxItemHeight+shareBoxItemGap)
-            shareImage = shareShot[shareItem_Y:shareItem_Y+shareBoxItemHeight,shareItem_X:shareItem_X+shareBoxItemWidth]
+            #shareImage = shareShot[shareItem_Y:shareItem_Y+shareBoxItemHeight,shareItem_X:shareItem_X+shareBoxItemWidth]
             # cv2.imshow('Shareitem', shareImage)
             # cv2.waitKey(0)
             if j == 0 and i == 0 and isServer and count < 4 :
@@ -133,7 +135,7 @@ def share_Truck(count,isServer):
             if j == 0 and i == 1:
                 clickShare(shareItem_X+shareOffset,shareItem_Y+shareOffset)
                 continue
-            if j == 0 and i == 2:
+            if j == 0 and i == 2 and count > 3:
                 clickShare(shareItem_X+shareOffset,shareItem_Y+shareOffset)
                 continue
             continue                
@@ -142,19 +144,28 @@ def share_Truck(count,isServer):
 def addResToLoc(res,loc):
     resFlatten = res.flatten()
     indSort = np.argsort(resFlatten)
+
+
     
     indSort = indSort[::-1]
     indSort = indSort[0:10]
 
+    # for index in indSort:
+    #     print(resFlatten[indSort])
+
     idx2d = np.unravel_index(indSort, res.shape)
+
+    
     
     # idx2d = idx2d[::-1]
     # idx2d = idx2d[0:10]
 
     for n_pt in zip(*idx2d[::-1]):
-        if pointInRange(n_pt,loc) or pointIsOutside(n_pt):
+        if pointInRange(n_pt,loc):
             continue
-        print(res[n_pt[1]][n_pt[0]])
+        if pointIsOutside(n_pt):
+            continue
+        #print(res[n_pt[1]][n_pt[0]])
         if res[n_pt[1]][n_pt[0]] < threshold_truck:
             continue
         loc.append(n_pt)
@@ -173,26 +184,34 @@ def analyse_static_Truck(foundTrucks):
     loc1 = []
     loc2 = []
     loc3 = []
+    loc4 = []
 
     res1 = cv2.matchTemplate(screenshot,urTruck1,cv2.TM_CCOEFF_NORMED)
     res2 = cv2.matchTemplate(screenshot,urTruck2,cv2.TM_CCOEFF_NORMED)
     res3 = cv2.matchTemplate(screenshot,srTruck1,cv2.TM_CCOEFF_NORMED)
+    res4 = cv2.matchTemplate(screenshot,srTruck2,cv2.TM_CCOEFF_NORMED)
+
+
 
     t1 = CustomThread(target=addResToLoc,args=(res1,loc1))
-    t2 = CustomThread(target=addResToLoc,args=(res1,loc2))
-    t3 = CustomThread(target=addResToLoc,args=(res1,loc3))
+    t2 = CustomThread(target=addResToLoc,args=(res2,loc2))
+    t3 = CustomThread(target=addResToLoc,args=(res3,loc3))
+    t4 = CustomThread(target=addResToLoc,args=(res4,loc4))
 
     t1.start()
     t2.start()
     t3.start()
+    t4.start()
 
     t1.join()
     t2.join()
     t3.join()
+    t4.join()
 
     addLocations(loc1,truckLocations)
     addLocations(loc2,truckLocations)
     addLocations(loc3,truckLocations)
+    addLocations(loc4,truckLocations)
 
     checkedLocations = []
 
@@ -203,8 +222,8 @@ def analyse_static_Truck(foundTrucks):
 
         checkedLocations.append(location)
 
-        truckLocation_X = location[0]
-        truckLocation_Y = location[1]
+        truckLocation_X = location[0] + truckOffSet
+        truckLocation_Y = location[1] + truckOffSet
         count = 0
         click(truckLocation_X,truckLocation_Y,False)
 
@@ -226,8 +245,9 @@ def analyse_static_Truck(foundTrucks):
 
         # cv2.imshow('Itembox', itembox)
         # cv2.waitKey(0)
+
         if truckstring in foundTrucks:
-            return
+            continue
         
         foundTrucks.append(truckstring)
 
@@ -247,11 +267,19 @@ def analyse_static_Truck(foundTrucks):
         if count > 2:
             #click(shareTruck_X,shareTruck_Y,True)
             share_Truck(count,False)
+            time.sleep(0.5)
+            keyboard.send('esc')
+            time.sleep(1)
 
-        click(refresh_X,refresh_Y,True)
-        time.sleep(2)
+    click(refresh_X,refresh_Y,True)
+    time.sleep(2)
 
-        
+def on_press(key):
+    global break_program
+    if key == Key.f1:
+        print ('end pressed')
+        break_program = True
+        return False       
 
 
 # hwndMain = win32gui.FindWindow(None, "Last War-Survival Game")  
@@ -272,19 +300,15 @@ win.size = (orgWidth, orgHeight)
 
 time.sleep(2)
 break_program = False
-def on_press(key):
-    global break_program
-    if key == Key.f1:
-        print ('end pressed')
-        break_program = True
-        return False
 
 
 
-with Listener(on_press=on_press) as listener:
-    while(not break_program):
-        analyse_static_Truck(foundTrucks)
-    listener.join()
+
+# with Listener(on_press=on_press) as listener:
+#     while(not break_program):
+while True:
+    analyse_static_Truck(foundTrucks)
+    # listener.join()
 
     
 
