@@ -75,7 +75,7 @@ powerBox_Heigth = 22
 
 min_shards = 3
 min_shards_for_kor_chat = 3
-isServer = False
+checkServer = False
 serverString = '#1004'
 
 foundTrucks = []
@@ -221,7 +221,7 @@ def analyse_static_Truck(foundTrucks):
     checkedLocations = []
 
     for location in truckLocations:
-
+        isServer = False
         if pointInRange(location,checkedLocations):
             continue
 
@@ -268,14 +268,14 @@ def analyse_static_Truck(foundTrucks):
                 count += 1
 
         print(count)
-
-        if isServer:
+        global checkServer
+        if checkServer:
             isServer = serverString in truckstring
 
         if count >= min_shards:
             #click(shareTruck_X,shareTruck_Y,True)
             share_Truck(count,isServer)
-            time.sleep(0.5)
+            time.sleep(1)
             keyboard.send('esc')
             time.sleep(1)
 
